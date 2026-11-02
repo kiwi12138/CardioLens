@@ -1,0 +1,19 @@
+# CardioLens: requirements for the `env2` environment
+# Gemma4 requires a higher version of transformers that is incompatible with
+# other models, so it must be tested in a separate environment.
+# IMPORTANT: install a PyTorch wheel that matches your CUDA version before installing the packages below.
+
+torch>=2.1.0,<2.3.0
+transformers>=4.30.0,<4.40.0
+vllm>=0.6.0,<0.8.0
+accelerate>=0.18.0
+datasets>=2.10.0
+sentencepiece>=0.1.99
+tokenizers>=0.13.0
+safetensors>=0.3.0
+numpy>=1.24.0
+pillow>=9.5.0
+tqdm>=4.65.0
+peft>=0.5.0
+protobuf>=4.21.0
+requests>=2.28.0

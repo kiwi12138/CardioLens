@@ -1,0 +1,29 @@
+[
+    {
+        "qid": "patient0067::enhancement_status::mcq_1",
+        "field": "Enhancement Status",
+        "image": [
+            "Images/patient0067_LGE_sax_slice_00.png",
+            "Images/patient0067_LGE_sax_slice_01.png",
+            "Images/patient0067_LGE_sax_slice_02.png",
+            "Images/patient0067_LGE_sax_slice_03.png",
+            "Images/patient0067_LGE_sax_slice_04.png",
+            "Images/patient0067_LGE_sax_slice_05.png",
+            "Images/patient0067_LGE_sax_slice_06.png",
+            "Images/patient0067_LGE_sax_slice_07.png"
+        ],
+        "patient_id": "patient0067",
+        "question_type": "Single Choice",
+        "is_multiple_choice": false,
+        "conversations": [
+            {
+                "from": "user",
+                "value": "You are a Vision-Language Model (VLM) for cardiac LGE MRI.\nTask: Using the provided image frames, decide whether abnormal delayed enhancement is present (single-choice).\n\nStrict rules:\n- Choose exactly ONE option: A or B.\n- No explanations, reasoning, descriptions, confidence, or extra characters.\n- Even if uncertain, choose the most likely answer.\n\nOptions:\nA. No Abnormal Delayed Enhancement\nB. Abnormal Delayed Enhancement"
+            },
+            {
+                "from": "assistant",
+                "value": "B. Abnormal Delayed Enhancement"
+            }
+        ]
+    }
+]
