@@ -35,12 +35,12 @@ Existing medical multimodal large language model (MLLM) benchmarks often use pub
 | | Full benchmark described in the paper | Released dataset subset |
 |:--|--:|--:|
 | **Patients** | **585** | **100** |
-| **CMR slices** | **473,896** | **78,722** |
-| **Verified QA pairs** | **13,494** | **2,298** |
+| **CMR slices** | **473,896** | **78,707** |
+| **Verified QA pairs** | **13,494** | **2,297** |
 | **Imaging sequences** | Cine · LGE · Perfusion · T2 | Same four sequences |
 | **Access** | Institutionally restricted research cohort | [Hugging Face — gated access](https://huggingface.co/datasets/kiwi12138/CardioLens) |
 
-> **Release scope:** The 585-patient benchmark is the research cohort evaluated in the paper. **Only the approved 100-patient subset is released** because of institutional data-sharing constraints. The full cohort is **not** downloadable from Hugging Face.
+> **Full benchmark vs. released dataset:** The complete 585-patient cohort is used for the research benchmark described in the paper. The Hugging Face release contains **100 patients, 78,707 image slices, and 2,297 verified QA pairs**, with access provided through the dataset's gated-access conditions. The full cohort is **not** available for download.
 
 ## Why CardioLens?
 
@@ -63,17 +63,12 @@ CardioLens is designed to address three gaps between widely used medical VQA eva
 
 ## Benchmark Tasks
 
-The benchmark follows the **increasing clinical demands** of CMR interpretation. These are three evaluation tiers, **not a mandatory chained inference pipeline**.
+CardioLens evaluates three levels of **increasing clinical complexity**, from recognizing sequence-specific findings to generating reports and making patient-level diagnoses. **Each tier is evaluated independently**: Level 2 does not require predictions from Level 1, and Level 3 predicts directly from multi-sequence images rather than consuming the model's generated reports.
 
-```mermaid
-flowchart TB
-    A["Multi-sequence Cardiac MRI<br/>Cine · LGE · Perfusion · T2"]
-    A --> B["Level 1 · Image Understanding<br/>Recognize fine-grained findings"]
-    A --> C["Level 2 · Report Generation<br/>Synthesize sequence-level evidence"]
-    A --> D["Level 3 · Disease Diagnosis<br/>Integrate patient-level evidence"]
-    B -.-> C
-    C -.-> D
-```
+<p align="center">
+  <img src="assets/figures/fig2_benchmark_overview.png" alt="CardioLens benchmark overview: four CMR sequences, three evaluation tiers, and radiologist-guided annotation pipeline" width="900" />
+</p>
+<p align="center"><sub><b>Figure 2.</b> CardioLens benchmark design, multi-sequence inputs, and data construction pipeline (from the paper).</sub></p>
 
 | Tier | Task | What is evaluated | Full benchmark size |
 |:--|:--|:--|--:|
@@ -94,6 +89,16 @@ Across **24 state-of-the-art general-purpose and medical MLLMs**, the paper repo
 3. **More or better-selected slices are not enough.** Random, clinically motivated, and data-driven slice-selection strategies, evaluated across different input budgets, produce only modest changes—typically around **1 percentage point** in the analyses reported in the paper.
 4. **Explicit reasoning prompts do not reliably repair visual grounding.** Requests for clinical justifications do not consistently improve performance and can reduce recall by encouraging more conservative predictions.
 
+<p align="center">
+  <img src="assets/figures/fig3_model_performance.png" alt="CardioLens model performance across the three task tiers for general and medical MLLMs" width="950" />
+</p>
+<p align="center"><sub><b>Figure 3.</b> Performance across the three evaluation levels. Stronger image-understanding performance does not reliably translate into stronger patient-level diagnosis.</sub></p>
+
+<p align="center">
+  <img src="assets/figures/fig4_diagnosis_failure.png" alt="Category collapse in CardioLens diagnosis with representative model accuracy F1 scores and confusion matrices" width="950" />
+</p>
+<p align="center"><sub><b>Figure 4.</b> Diagnosis-stage failure analysis: seemingly moderate accuracy can obscure collapse toward frequent disease categories.</sub></p>
+
 **Implication:** Progress toward clinically useful MLLMs requires more than better performance on isolated medical images. It requires reliable use of distributed visual evidence and clinically meaningful synthesis across a complete study.
 
 ## Dataset and Access
@@ -111,15 +116,15 @@ The released data are hosted separately from this code repository. The Hugging F
 | [`Diagnosis_Label.xlsx`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | Patient-level diagnostic labels |
 | [`Reports.xlsx`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | Report references associated with the released studies |
 
-The paper describes the release as a **100-patient, 78,722-slice, 2,298-QA** subset retaining the four CMR sequences and three task tiers. Refer to the paper's public-subset appendix for details of coverage and its relationship to the complete cohort.
+**Released subset statistics.** The current Hugging Face release contains **100 patients, 78,707 CMR slices, and 2,297 verified QA pairs**, broken down into **1,805 image-understanding**, **361 report-generation**, and **131 disease-diagnosis** evaluation items. These counts match the 100-patient subset documented in Appendix H of the paper.
 
 **Important for evaluation:** The inference code below consumes JSON samples containing image paths (e.g., selected 2D frames). The NIfTI volumes and the evaluation-ready image paths are different representations; ensure the referenced slices/images are prepared and the paths in your JSON resolve correctly before running the evaluator.
 
-### Data governance and intended use
+### Access and intended use
 
-- Data were collected with institutional review board approval from **Beijing Anzhen Hospital, Capital Medical University** (**IRB No. 2025216x**) and de-identified before use, as described in the paper.
-- Access is governed by the dataset hosting conditions and applicable institutional restrictions. The Hugging Face dataset currently lists the **CC BY-NC-SA 4.0** license; check the dataset page for the authoritative access terms.
-- CardioLens is intended for **research and evaluation**, not for making medical decisions or deploying a clinical diagnostic system.
+- The released imaging studies are **de-identified** and provided for **research and benchmark evaluation**, not for clinical decision-making.
+- Access to the 100-patient release is managed through [Hugging Face gated access](https://huggingface.co/datasets/kiwi12138/CardioLens). Please follow the conditions displayed on the dataset page.
+- The Hugging Face repository currently lists **CC BY-NC-SA 4.0** as its license. Check the dataset page for applicable access and reuse terms.
 
 ## Code and Reproducibility
 
@@ -138,6 +143,11 @@ CardioLens/
 ├── run_models.py                   # Unified launcher for all model profiles
 ├── examples/
 │   └── redacted_lge_sample.json    # Redacted example of the expected data format
+├── assets/
+│   └── figures/                   # Paper figures used in this README
+│       ├── fig2_benchmark_overview.png
+│       ├── fig3_model_performance.png
+│       └── fig4_diagnosis_failure.png
 ├── requirement-env1.txt            # Dependencies for env1 (most models)
 ├── requirement-env2.txt            # Dependencies for env2 (Gemma4 only)
 ├── mil_code/                       # Task-Aware MIL for data-driven slice selection
