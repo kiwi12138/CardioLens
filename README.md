@@ -1,28 +1,145 @@
-# CardioLens
+<h1 align="center">🫀 CardioLens</h1>
 
-CardioLens is a benchmark and evaluation toolkit for multi-sequence cardiac MRI, accompanying the paper *CardioLens: Revealing the Clinical Reality Gap of MLLMs via Multi-Sequence Cardiac MRI Evaluations*. The paper's core message is that modern medical MLLMs may look strong on public 2D benchmarks, but still show a clear clinical reality gap on realistic, patient-level CMR studies.
+<h3 align="center">Revealing the Clinical Reality Gap of MLLMs via Multi-Sequence Cardiac MRI Evaluations</h3>
 
-The repository provides:
+<p align="center"><strong>A clinically grounded benchmark for evaluating multimodal large language models on real-world cardiac MRI interpretation.</strong></p>
 
-1. **Evaluation code** (`cardiolens_eval.py`, `run_models.py`) for sending patient-level JSON samples and image inputs through vLLM and writing predictions to CSV.
-2. **Task-Aware MIL code** (`mil_code/`) for data-driven slice selection via Multiple Instance Learning, used as one of the slice-selection protocols described in the paper.
+<p align="center">
+  <a href="https://neurips.cc/Conferences/2026/CallForEvaluationsDatasets"><img alt="NeurIPS 2026 E&amp;D" src="https://img.shields.io/badge/NeurIPS_2026-Evaluations_%26_Datasets-325B97?style=flat-square" /></a>
+  <a href="https://arxiv.org/abs/2606.00123"><img alt="Paper" src="https://img.shields.io/badge/Paper-arXiv%3A2606.00123-B31B1B?style=flat-square" /></a>
+  <a href="https://huggingface.co/datasets/kiwi12138/CardioLens"><img alt="Dataset: Hugging Face (gated)" src="https://img.shields.io/badge/Dataset-Hugging_Face_%7C_Gated-FFD21E?style=flat-square" /></a>
+  <a href="https://github.com/kiwi12138/CardioLens"><img alt="Code" src="https://img.shields.io/badge/Code-GitHub-24292F?style=flat-square" /></a>
+</p>
 
-The evaluation supports the three task tiers described in the paper:
+<p align="center">
+  <a href="https://arxiv.org/abs/2606.00123">📄 Paper</a> &nbsp;·&nbsp;
+  <a href="https://huggingface.co/datasets/kiwi12138/CardioLens">🤗 Dataset &amp; Access</a> &nbsp;·&nbsp;
+  <a href="#code-and-reproducibility">💻 Code</a> &nbsp;·&nbsp;
+  <a href="#citation">📚 Citation</a>
+</p>
 
-1. Image understanding: sequence-level clinical finding recognition.
-2. Report generation: converting structured findings into report-style text.
-3. Disease diagnosis: patient-level diagnosis from multi-sequence evidence.
+---
 
-## Repository Layout
+## Overview
 
+**Can strong performance on medical vision–language benchmarks translate into reliable interpretation of a real clinical imaging study?**
+
+Existing medical multimodal large language model (MLLM) benchmarks often use publicly available, isolated images and short recognition-style questions. Real cardiovascular magnetic resonance (CMR) interpretation is different: a physician must combine evidence from **multiple sequences, anatomical views, and temporal phases** to identify findings, formulate a report, and reach a patient-level diagnosis.
+
+**CardioLens** is a leakage-resistant, clinically grounded evaluation testbed built from non-public hospital CMR studies and expert-verified, report-derived annotations. It evaluates MLLMs at **three increasingly demanding levels** of clinical interpretation: **image understanding, report generation, and disease diagnosis**. The accompanying paper benchmarks **24 MLLMs** and examines where their apparent medical understanding fails under more realistic evaluation conditions.
+
+> **Main takeaway:** High scores on conventional medical VQA benchmarks do not establish reliable clinical interpretation. On CardioLens, model performance drops as tasks demand more complete synthesis of cardiac MRI evidence.
+
+### At a glance
+
+| | Full benchmark described in the paper | Released dataset subset |
+|:--|--:|--:|
+| **Patients** | **585** | **100** |
+| **CMR slices** | **473,896** | **78,722** |
+| **Verified QA pairs** | **13,494** | **2,298** |
+| **Imaging sequences** | Cine · LGE · Perfusion · T2 | Same four sequences |
+| **Access** | Institutionally restricted research cohort | [Hugging Face — gated access](https://huggingface.co/datasets/kiwi12138/CardioLens) |
+
+> **Release scope:** The 585-patient benchmark is the research cohort evaluated in the paper. **Only the approved 100-patient subset is released** because of institutional data-sharing constraints. The full cohort is **not** downloadable from Hugging Face.
+
+## Why CardioLens?
+
+CardioLens is designed to address three gaps between widely used medical VQA evaluations and real clinical workflows:
+
+| Evaluation gap | CardioLens approach |
+|:--|:--|
+| **Potential benchmark contamination** from widely reused public datasets | Uses previously non-public hospital CMR studies to reduce exposure to pretraining data. |
+| **Simplified visual inputs** such as a single 2D image | Evaluates evidence drawn from multi-view, multi-sequence, spatial and temporal CMR studies. |
+| **Recognition-centric questions** that do not test clinical synthesis | Organizes evaluation around findings, structured reporting, and patient-level diagnosis. |
+
+### Four complementary CMR sequences
+
+| Sequence | Clinical evidence assessed |
+|:--|:--|
+| **Cine MRI** | Cardiac morphology, ventricular function, wall motion, and dynamic behavior |
+| **Late Gadolinium Enhancement (LGE)** | Myocardial fibrosis/scar and enhancement patterns |
+| **Perfusion MRI** | Myocardial perfusion abnormalities and their distribution |
+| **T2-weighted MRI** | Myocardial edema, inflammation-related signal abnormalities, and localization |
+
+## Benchmark Tasks
+
+The benchmark follows the **increasing clinical demands** of CMR interpretation. These are three evaluation tiers, **not a mandatory chained inference pipeline**.
+
+```mermaid
+flowchart TB
+    A["Multi-sequence Cardiac MRI<br/>Cine · LGE · Perfusion · T2"]
+    A --> B["Level 1 · Image Understanding<br/>Recognize fine-grained findings"]
+    A --> C["Level 2 · Report Generation<br/>Synthesize sequence-level evidence"]
+    A --> D["Level 3 · Disease Diagnosis<br/>Integrate patient-level evidence"]
+    B -.-> C
+    C -.-> D
 ```
+
+| Tier | Task | What is evaluated | Full benchmark size |
+|:--|:--|:--|--:|
+| **Level 1** | **Image Understanding** | Sequence-specific clinical findings, including morphology, function, enhancement, perfusion, and edema; single- and multi-label questions | **32 subtasks · 10,400 QA** |
+| **Level 2** | **Report Generation** | Clinically coherent, structured descriptions integrating evidence across views **within each sequence** | **4 subtasks · 2,246 QA** |
+| **Level 3** | **Disease Diagnosis** | Patient-level etiological classification and non-ischemic cardiomyopathy subtyping from **multiple sequences** | **2 subtasks · 848 QA** |
+
+For disease diagnosis, CardioLens evaluates **Normal Heart (NH)** vs. **Ischemic Heart Disease (IHD)** vs. **Non-Ischemic Cardiomyopathy (NICM)**, followed by NICM subtyping into **HCM, DCM, RCM, ACM, and Myocarditis**.
+
+The annotations are derived from clinical reports that underwent senior radiologist review; report-derived labels are then extracted and verified, while diagnosis targets are grounded in patient discharge records. See the [paper](https://arxiv.org/abs/2606.00123) for complete task definitions and verification details.
+
+## Key Findings
+
+Across **24 state-of-the-art general-purpose and medical MLLMs**, the paper reports four important observations:
+
+1. **A pronounced clinical reality gap.** Performance deteriorates as evaluation moves from recognizing individual CMR findings to reporting and patient-level diagnosis. Strong conventional medical VQA results do not transfer reliably to this setting.
+2. **Category collapse at diagnosis.** Models frequently favor common abnormal categories instead of distinguishing clinically different conditions, revealing a failure of evidence-grounded prediction.
+3. **More or better-selected slices are not enough.** Random, clinically motivated, and data-driven slice-selection strategies, evaluated across different input budgets, produce only modest changes—typically around **1 percentage point** in the analyses reported in the paper.
+4. **Explicit reasoning prompts do not reliably repair visual grounding.** Requests for clinical justifications do not consistently improve performance and can reduce recall by encouraging more conservative predictions.
+
+**Implication:** Progress toward clinically useful MLLMs requires more than better performance on isolated medical images. It requires reliable use of distributed visual evidence and clinically meaningful synthesis across a complete study.
+
+## Dataset and Access
+
+**Dataset repository:** **[🤗 kiwi12138/CardioLens on Hugging Face](https://huggingface.co/datasets/kiwi12138/CardioLens)**
+
+The released data are hosted separately from this code repository. The Hugging Face repository is **gated**: visit the dataset page, sign in, and follow its access conditions to obtain access to the files. **Do not assume that the full 585-patient study cohort is part of the release.**
+
+### Files in the release
+
+| File on Hugging Face | Contents |
+|:--|:--|
+| [`CardioLens_NIfTI.zip`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | De-identified CMR imaging studies in NIfTI format |
+| [`CardioLens_VQA.zip`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | Benchmark VQA data and related evaluation assets |
+| [`Diagnosis_Label.xlsx`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | Patient-level diagnostic labels |
+| [`Reports.xlsx`](https://huggingface.co/datasets/kiwi12138/CardioLens/tree/main) | Report references associated with the released studies |
+
+The paper describes the release as a **100-patient, 78,722-slice, 2,298-QA** subset retaining the four CMR sequences and three task tiers. Refer to the paper's public-subset appendix for details of coverage and its relationship to the complete cohort.
+
+**Important for evaluation:** The inference code below consumes JSON samples containing image paths (e.g., selected 2D frames). The NIfTI volumes and the evaluation-ready image paths are different representations; ensure the referenced slices/images are prepared and the paths in your JSON resolve correctly before running the evaluator.
+
+### Data governance and intended use
+
+- Data were collected with institutional review board approval from **Beijing Anzhen Hospital, Capital Medical University** (**IRB No. 2025216x**) and de-identified before use, as described in the paper.
+- Access is governed by the dataset hosting conditions and applicable institutional restrictions. The Hugging Face dataset currently lists the **CC BY-NC-SA 4.0** license; check the dataset page for the authoritative access terms.
+- CardioLens is intended for **research and evaluation**, not for making medical decisions or deploying a clinical diagnostic system.
+
+## Code and Reproducibility
+
+This repository provides the evaluation implementation accompanying CardioLens:
+
+- **MLLM evaluation** (`cardiolens_eval.py` and `run_models.py`): submit patient-level JSON samples and selected image inputs to supported model profiles through vLLM, then write predictions to CSV.
+- **Task-Aware Multiple Instance Learning (MIL)** (`mil_code/`): train a data-driven slice selector and extract task-relevant top-*K* slices, used as one of the protocols analyzed in the paper.
+
+The following technical sections retain the repository's original usage instructions and command-line examples.
+
+### Repository Layout
+
+```text
 CardioLens/
 ├── cardiolens_eval.py              # Core inference and evaluation logic
 ├── run_models.py                   # Unified launcher for all model profiles
 ├── examples/
 │   └── redacted_lge_sample.json    # Redacted example of the expected data format
-├── requirement-env1.txt             # Dependencies for env1 (most models)
-├── requirement-env2.txt             # Dependencies for env2 (Gemma4 only)
+├── requirement-env1.txt            # Dependencies for env1 (most models)
+├── requirement-env2.txt            # Dependencies for env2 (Gemma4 only)
 ├── mil_code/                       # Task-Aware MIL for data-driven slice selection
 │   ├── train.py                    # Train the MIL model
 │   ├── evaluate.py                 # Evaluate a trained MIL checkpoint
@@ -45,7 +162,7 @@ CardioLens/
 
 ### Task-Aware MIL (Data-Driven Slice Selection)
 
-The `mil_code/` directory contains the implementation of the Task-Aware Multiple Instance Learning (MIL) framework described in the paper (Section 2.4 / Appendix C). This model learns per-slice, per-task importance weights from sequence-level supervision, and its top-K outputs serve as inputs for the data-driven MIL sampling protocol used in MLLM evaluation.
+The `mil_code/` directory contains the implementation of the Task-Aware Multiple Instance Learning (MIL) framework described in the paper. This model learns per-slice, per-task importance weights from sequence-level supervision, and its top-K outputs serve as inputs for the data-driven MIL sampling protocol used in MLLM evaluation.
 
 Key components:
 - **`train.py`**: Train the MIL model with multi-task loss and sparsity regularization.
@@ -60,16 +177,15 @@ See [`mil_code/README.md`](mil_code/README.md) for detailed usage instructions a
 - [requirement-env1.txt](requirement-env1.txt): dependencies for env1 (most models).
 - [requirement-env2.txt](requirement-env2.txt): dependencies for env2 (Gemma4 only).
 
-## Environment Setup
+### Environment Setup
 
 During evaluation, we found that different models depend on different versions of the `transformers` library. We use the most compatible versions possible, but Gemma4 — a newer model — requires a higher version of `transformers` that cannot coexist with the other models in the same environment. Therefore, two separate Conda environments are needed:
-
 - **`env1`** (`vlmqwen`): supports all models **except** Gemma4. Uses `requirement-env1.txt`.
 - **`env2`** (`vlmgemma4`): supports Gemma4-based models only. Uses `requirement-env2.txt`.
 
 Install a PyTorch wheel that matches your CUDA version first, then install the requirements.
 
-### env1 — Most models
+#### env1 — Most models
 
 ```bash
 cd CardioLens
@@ -80,7 +196,7 @@ pip install --index-url https://download.pytorch.org/whl/cu118 \
 pip install -r requirement-env1.txt
 ```
 
-### env2 — Gemma4 only
+#### env2 — Gemma4 only
 
 ```bash
 conda create -n env2 python=3.11 -y
@@ -90,7 +206,7 @@ pip install --index-url https://download.pytorch.org/whl/cu118 \
 pip install -r requirement-env2.txt
 ```
 
-### MIL training environment
+#### MIL training environment
 
 ```bash
 conda create -n mil python=3.11 -y
@@ -98,9 +214,9 @@ conda activate mil
 pip install torch torchvision tqdm numpy
 ```
 
-Note: evaluation depends on vLLM and GPU inference. CPU mode may work for limited testing, but it is far too slow for practical evaluation.
+> **Compute note:** Evaluation depends on vLLM and GPU inference. CPU mode may work for limited testing but is far too slow for practical evaluation.
 
-## Data Format
+### Data Format
 
 The evaluation scripts read a JSON array, where each element is one sample. The code prefers `conversations` for the user prompt and reference answer, but can fall back to `question`, `query`, `text`, and `answer` when needed. `image` may be a single path or a list of paths; if the paths are relative, the script resolves them using `--image_root`.
 
@@ -138,9 +254,9 @@ Example:
 
 Each JSON file is a sample list: each item binds a set of slices, a question, a reference answer, and metadata. The evaluation writes one CSV row per sample.
 
-## Running the Code
+### Running the Code
 
-### MLLM Evaluation
+#### MLLM Evaluation
 
 `run_models.py` is the unified entrypoint for all model profiles. It uses the selected `--profile` to fill in default values such as `max_tokens`, `max_model_len`, `dtype`, and `limit_mm_images`.
 
@@ -180,11 +296,10 @@ python run_models.py \
 ```
 
 You can also pass `--output_csv_path` directly if you already know the exact output file. Keep these rules in mind:
-
 - If `--json_path` points to a single file, use either `--output_csv_path` or `--json_root` + `--output_root`.
 - If `--json_path` points to a directory, you must use `--output_root`, and `--output_csv_path` is not allowed.
 
-### Task-Aware MIL Training & Slice Extraction
+#### Task-Aware MIL Training & Slice Extraction
 
 The MIL model is used for the data-driven slice selection protocol described in the paper. It learns per-slice, per-task importance weights from sequence-level image-understanding labels.
 
@@ -213,7 +328,7 @@ python mil_code/extract_topk.py \
 
 The `extract_topk.py` output provides both per-task selections (for image understanding evaluation) and task-averaged selections (for report generation and disease diagnosis). See [`mil_code/README.md`](mil_code/README.md) for full details.
 
-## Common Arguments
+### Common Arguments
 
 - `--profile`: model profile, taken from `PROFILE_CONFIG` in [cardiolens_eval.py](cardiolens_eval.py).
 - `--json_path`: a single JSON file or a JSON directory.
@@ -230,7 +345,7 @@ The `extract_topk.py` output provides both per-task selections (for image unders
 
 If `--image_input_mode both` is used, the script runs both input modes and writes `_pil.csv` and `_path.csv` outputs.
 
-## Available Profiles
+### Available Profiles
 
 `run_models.py` supports **all** profiles defined in `PROFILE_CONFIG`:
 
@@ -240,9 +355,9 @@ If `--image_input_mode both` is used, the script runs both input modes and write
 **env2 models** (use `requirement-env2.txt`):
 `gemma_4_4b`, `gemma_4_31b`
 
-## Minimal Sanity Check
+### Minimal Sanity Check
 
-To verify the pipeline end to end, run the example JSON through a small batch and confirm that the CSV and logs are generated.
+To verify the pipeline end to end, run the example JSON through a small batch and confirm that the CSV and logs are generated. Make sure the referenced example images are present (or update `--image_root` accordingly), and supply a compatible local model checkpoint.
 
 ```bash
 conda activate env1
@@ -260,3 +375,32 @@ python run_models.py \
 
 If you have more JSON files, point `--json_path` at the directory. The script will recursively process all `.json` files and preserve the same relative structure under `--output_root`.
 
+## Citation
+
+If CardioLens is useful for your research, please cite the paper:
+
+```bibtex
+@misc{su2026cardiolens,
+  title        = {CardioLens: Revealing the Clinical Reality Gap of MLLMs via Multi-Sequence Cardiac MRI Evaluations},
+  author       = {Su, Zixian and Zhang, Hongkai and Gao, Fan and Su, Encheng and Qu, Taiping and Guo, Jingwei and Zhang, Nan and Wang, Hui and Zhou, Zhen and Bo, Kairui and Chen, Yan and Ren, Yue and Li, Shuai and Xu, Lei and Zhang, Henggui},
+  year         = {2026},
+  eprint       = {2606.00123},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CV},
+  url          = {https://arxiv.org/abs/2606.00123}
+}
+```
+
+## Acknowledgments
+
+CardioLens is a collaborative research effort involving the **Beijing Academy of Artificial Intelligence (BAAI)**, **Beijing Anzhen Hospital / Capital Medical University**, **Beihang University**, and **King Abdullah University of Science and Technology (KAUST)**. We thank the clinical experts involved in data review, annotation verification, and study design.
+
+---
+
+<p align="center"><strong>CardioLens · From image recognition to clinically grounded CMR evaluation</strong></p>
+
+<p align="center">
+  <a href="https://arxiv.org/abs/2606.00123">Paper</a> ·
+  <a href="https://huggingface.co/datasets/kiwi12138/CardioLens">Dataset</a> ·
+  <a href="https://github.com/kiwi12138/CardioLens">Code</a>
+</p>
